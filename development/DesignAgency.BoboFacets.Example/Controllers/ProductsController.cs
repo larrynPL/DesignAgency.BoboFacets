@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Web.Mvc;
+using Umbraco.Core.Models;
 using Umbraco.Web.Models;
 using Umbraco.Web.Mvc;
 using Umbraco.Web.PublishedContentModels;
@@ -22,8 +23,10 @@ namespace DesignAgency.BoboFacets.Example.Controllers
             var results = browser.Browse(browserRequest);
 
             var products = Umbraco.TypedContent(results.Hits.Select(x => x.StoredFields.Get("id"))).OfType<Product>();
+            var products2 = Umbraco.TypedContent(results.Hits.Select(x => x.StoredFields.Get("id"))).OfType<IPublishedContent>();
 
             viewModel.Results = products;
+            viewModel.Results2 = products2;
             viewModel.FacetGroups = browser.ConvertToFacetGroups(results.FacetMap);
             viewModel.TotalResults = results.NumHits;
             viewModel.TotalDocs = results.TotalDocs;

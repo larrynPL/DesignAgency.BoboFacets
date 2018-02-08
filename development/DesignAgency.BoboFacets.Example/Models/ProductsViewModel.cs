@@ -14,6 +14,7 @@ namespace DesignAgency.BoboFacets.Example.Models
         public Dictionary<string, IEnumerable<FacetSelection>> FacetSelection { get; set; }
 
         public IEnumerable<Product> Results { get; set; }
+        public IEnumerable<IPublishedContent> Results2 { get; set; }
 
         public IEnumerable<FacetGroup> FacetGroups { get; set; }
         public int TotalResults { get; internal set; }

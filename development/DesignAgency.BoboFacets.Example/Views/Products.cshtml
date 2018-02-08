@@ -43,14 +43,22 @@
         </div>
 
         <div class="product-grid">
-            @if (Model.Content.Results != null)
+            @if (Model.Content.Results2 != null)
             {
-                foreach (Product product in Model.Content.Results)
+                foreach (IPublishedContent product in Model.Content.Results2.Where(x => x.DocumentTypeAlias == "product2"))
                 {
-                    <a href="@product.Url" class="product-grid__item" style="background-image: url('@product.Photos.FirstOrDefault().Url')">
+                    var photos = product.GetPropertyValue<IEnumerable<IPublishedContent>>("photos");
+
+                    <a href="@product.Url" class="product-grid__item" style="background-image: url('@photos.FirstOrDefault().Url')">
                         <div class="product-grid__item__overlay">
-                            <div class="product-grid__item__name">@product.ProductName</div>
-                            <div class="product-grid__item__price">@Model.Content.DefaultCurrency @product.Price.ToString("F")</div>
+                            <div class="product-grid__item__name">@product.Name</div>
+                            <div class="product-grid__item__price">@Model.Content.DefaultCurrency 
+                                @if (product.HasProperty("price") && product.HasValue("price"))
+                                {
+                                    var price = product.GetPropertyValue("price");
+                                    @price
+                                }
+                                </div>
                         </div>
                     </a>
                 }

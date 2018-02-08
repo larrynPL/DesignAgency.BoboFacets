@@ -298,6 +298,9 @@
         var groupIndex = -1;
         var itemIndex = -1;
         $scope.selectedItem = undefined;
+        $scope.clearSearch = function () {
+            $scope.searchTerm = null;
+        };
         function iterateResults(up) {
             //default group
             if (!group) {
@@ -9728,19 +9731,25 @@
         angular.module('umbraco').controller('Umbraco.Editors.PartialViews.EditController', PartialViewsEditController);
     }());
     function imageFilePickerController($scope) {
-        $scope.pick = function () {
-            $scope.mediaPickerDialog = {};
-            $scope.mediaPickerDialog.view = 'mediapicker';
-            $scope.mediaPickerDialog.show = true;
-            $scope.mediaPickerDialog.submit = function (model) {
-                $scope.model.value = model.selectedImages[0].image;
-                $scope.mediaPickerDialog.show = false;
-                $scope.mediaPickerDialog = null;
+        $scope.add = function () {
+            $scope.mediaPickerOverlay = {
+                view: 'mediapicker',
+                disableFolderSelect: true,
+                onlyImages: true,
+                show: true,
+                submit: function (model) {
+                    $scope.model.value = model.selectedImages[0].image;
+                    $scope.mediaPickerOverlay.show = false;
+                    $scope.mediaPickerOverlay = null;
+                },
+                close: function () {
+                    $scope.mediaPickerOverlay.show = false;
+                    $scope.mediaPickerOverlay = null;
+                }
             };
-            $scope.mediaPickerDialog.close = function (oldModel) {
-                $scope.mediaPickerDialog.show = false;
-                $scope.mediaPickerDialog = null;
-            };
+        };
+        $scope.remove = function () {
+            $scope.model.value = null;
         };
     }
     angular.module('umbraco').controller('Umbraco.PrevalueEditors.ImageFilePickerController', imageFilePickerController);
@@ -10232,7 +10241,7 @@
             initActiveColor();
         }
         $scope.toggleItem = function (color) {
-            var currentColor = $scope.model.value.hasOwnProperty('value') ? $scope.model.value.value : $scope.model.value;
+            var currentColor = $scope.model.value && $scope.model.value.hasOwnProperty('value') ? $scope.model.value.value : $scope.model.value;
             var newColor;
             if (currentColor === color.value) {
                 // deselect
@@ -11748,7 +11757,7 @@
         $scope.openEditorOverlay = function (event, area, index, key) {
             $scope.editorOverlay = {
                 view: 'itempicker',
-                filter: false,
+                filter: area.$allowedEditors.length > 15,
                 title: localizationService.localize('grid_insertControl'),
                 availableItems: area.$allowedEditors,
                 event: event,
@@ -12053,10 +12062,10 @@
             }
             //ensure the grid has a column value set,
             //if nothing is found, set it to 12
-            if ($scope.model.config.items.columns && angular.isString($scope.model.config.items.columns)) {
-                $scope.model.config.items.columns = parseInt($scope.model.config.items.columns);
-            } else {
+            if (!$scope.model.config.items.columns) {
                 $scope.model.config.items.columns = 12;
+            } else if (angular.isString($scope.model.config.items.columns)) {
+                $scope.model.config.items.columns = parseInt($scope.model.config.items.columns);
             }
             if ($scope.model.value && $scope.model.value.sections && $scope.model.value.sections.length > 0 && $scope.model.value.sections[0].rows && $scope.model.value.sections[0].rows.length > 0) {
                 if ($scope.model.value.name && angular.isArray($scope.model.config.items.templates)) {
@@ -12216,6 +12225,13 @@
         };
         gridService.getGridEditors().then(function (response) {
             $scope.availableEditors = response.data;
+            //Localize the grid editor names
+            angular.forEach($scope.availableEditors, function (value, key) {
+                //If no translation is provided, keep using the editor name from the manifest
+                if (localizationService.dictionary.hasOwnProperty('grid_' + value.alias)) {
+                    value.name = localizationService.localize('grid_' + value.alias);
+                }
+            });
             $scope.contentReady = true;
             // *********************************************
             // Init grid
@@ -12702,12 +12718,12 @@
         });
         // Return a helper with preserved width of cells
         var fixHelper = function (e, ui) {
-            var h = ui.clone();
-            h.children().each(function () {
+            ui.children().each(function () {
                 $(this).width($(this).width());
             });
-            h.css('background-color', 'lightgray');
-            return h;
+            var row = ui.clone();
+            row.css('background-color', 'lightgray');
+            return row;
         };
         $scope.sortableOptions = {
             helper: fixHelper,
@@ -12718,6 +12734,10 @@
             cursor: 'move',
             items: '> tr',
             tolerance: 'pointer',
+            forcePlaceholderSize: true,
+            start: function (e, ui) {
+                ui.placeholder.height(ui.item.height());
+            },
             update: function (e, ui) {
                 // Get the new and old index for the moved element (using the text as the identifier)
                 var newIndex = ui.item.index();
@@ -13871,6 +13891,7 @@
         function setupViewModel() {
             $scope.images = [];
             $scope.ids = [];
+            $scope.isMultiPicker = multiPicker;
             if ($scope.model.value) {
                 var ids = $scope.model.value.split(',');
                 //NOTE: We need to use the entityResource NOT the mediaResource here because
@@ -14782,6 +14803,9 @@
             $scope.model.value.splice(idx, 1);
         };
         $scope.add = function ($event) {
+            if (!angular.isArray($scope.model.value)) {
+                $scope.model.value = [];
+            }
             if ($scope.newCaption == '') {
                 $scope.hasError = true;
             } else {
@@ -15139,7 +15163,7 @@
                         }
                     });
                     editor.on('ObjectResized', function (e) {
-                        var qs = '?width=' + e.width + '&height=' + e.height;
+                        var qs = '?width=' + e.width + '&height=' + e.height + '&mode=max';
                         var srcAttr = $(e.target).attr('src');
                         var path = srcAttr.split('?')[0];
                         $(e.target).attr('data-mce-src', path + qs);
@@ -15233,6 +15257,9 @@
                 // element might still be there even after the modal has been hidden.
                 $scope.$on('$destroy', function () {
                     unsubscribe();
+                    if (tinyMceEditor !== undefined && tinyMceEditor != null) {
+                        tinyMceEditor.destroy();
+                    }
                 });
             });
         });
@@ -15735,17 +15762,22 @@
     angular.module('umbraco').controller('Umbraco.PropertyEditors.textAreaController', textAreaController);
     function textboxController($scope) {
         // macro parameter editor doesn't contains a config object,
-        // so we create a new one to hold any properties 
+        // so we create a new one to hold any properties
         if (!$scope.model.config) {
             $scope.model.config = {};
-        }
-        if (!$scope.model.config.maxChars) {
-            $scope.model.config.maxChars = false;
         }
         $scope.model.maxlength = false;
         if ($scope.model.config && $scope.model.config.maxChars) {
             $scope.model.maxlength = true;
-            if ($scope.model.value == undefined) {
+        }
+        if (!$scope.model.config.maxChars) {
+            // 500 is the maximum number that can be stored
+            // in the database, so set it to the max, even
+            // if no max is specified in the config
+            $scope.model.config.maxChars = 500;
+        }
+        if ($scope.model.maxlength) {
+            if ($scope.model.value === undefined) {
                 $scope.model.count = $scope.model.config.maxChars * 1;
             } else {
                 $scope.model.count = $scope.model.config.maxChars * 1 - $scope.model.value.length;
@@ -15753,7 +15785,7 @@
         }
         $scope.model.change = function () {
             if ($scope.model.config && $scope.model.config.maxChars) {
-                if ($scope.model.value == undefined) {
+                if ($scope.model.value === undefined) {
                     $scope.model.count = $scope.model.config.maxChars * 1;
                 } else {
                     $scope.model.count = $scope.model.config.maxChars * 1 - $scope.model.value.length;
@@ -17412,7 +17444,7 @@
     }());
     (function () {
         'use strict';
-        function UsersController($scope, $timeout, $location, usersResource, userGroupsResource, userService, localizationService, contentEditingHelper, usersHelper, formHelper, notificationsService, dateHelper) {
+        function UsersController($scope, $timeout, $location, $routeParams, usersResource, userGroupsResource, userService, localizationService, contentEditingHelper, usersHelper, formHelper, notificationsService, dateHelper) {
             var vm = this;
             var localizeSaving = localizationService.localize('general_saving');
             vm.page = {};
@@ -17538,6 +17570,11 @@
             function init() {
                 vm.usersOptions.orderBy = 'Name';
                 vm.usersOptions.orderDirection = 'Ascending';
+                if ($routeParams.create) {
+                    setUsersViewState('createUser');
+                } else if ($routeParams.invite) {
+                    setUsersViewState('inviteUser');
+                }
                 // Get users
                 getUsers();
                 // Get user groups
@@ -17575,6 +17612,14 @@
             function setUsersViewState(state) {
                 if (state === 'createUser') {
                     clearAddUserForm();
+                    $location.search('create', 'true');
+                    $location.search('invite', null);
+                } else if (state === 'inviteUser') {
+                    $location.search('create', null);
+                    $location.search('invite', 'true');
+                } else if (state === 'overview') {
+                    $location.search('create', null);
+                    $location.search('invite', null);
                 }
                 vm.usersViewState = state;
             }

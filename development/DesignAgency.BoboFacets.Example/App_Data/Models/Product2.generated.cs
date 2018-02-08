@@ -20,16 +20,16 @@ using Umbraco.ModelsBuilder.Umbraco;
 
 namespace Umbraco.Web.PublishedContentModels
 {
-	/// <summary>Product</summary>
-	[PublishedContentModel("product")]
-	public partial class Product : PublishedContentModel
+	/// <summary>Product2</summary>
+	[PublishedContentModel("product2")]
+	public partial class Product2 : PublishedContentModel
 	{
 #pragma warning disable 0109 // new is redundant
-		public new const string ModelTypeAlias = "product";
+		public new const string ModelTypeAlias = "product2";
 		public new const PublishedItemType ModelItemType = PublishedItemType.Content;
 #pragma warning restore 0109
 
-		public Product(IPublishedContent content)
+		public Product2(IPublishedContent content)
 			: base(content)
 		{ }
 
@@ -40,7 +40,7 @@ namespace Umbraco.Web.PublishedContentModels
 		}
 #pragma warning restore 0109
 
-		public static PublishedPropertyType GetModelPropertyType<TValue>(Expression<Func<Product, TValue>> selector)
+		public static PublishedPropertyType GetModelPropertyType<TValue>(Expression<Func<Product2, TValue>> selector)
 		{
 			return PublishedContentModelUtility.GetModelPropertyType(GetModelContentType(), selector);
 		}
@@ -73,12 +73,12 @@ namespace Umbraco.Web.PublishedContentModels
 		}
 
 		///<summary>
-		/// Features
+		/// Feature
 		///</summary>
 		[ImplementPropertyType("features")]
-		public object Features
+		public IEnumerable<IPublishedContent> Features
 		{
-			get { return this.GetPropertyValue("features"); }
+			get { return this.GetPropertyValue<IEnumerable<IPublishedContent>>("features"); }
 		}
 
 		///<summary>
@@ -94,9 +94,9 @@ namespace Umbraco.Web.PublishedContentModels
 		/// Price
 		///</summary>
 		[ImplementPropertyType("price")]
-		public decimal Price
+		public int Price
 		{
-			get { return this.GetPropertyValue<decimal>("price"); }
+			get { return this.GetPropertyValue<int>("price"); }
 		}
 
 		///<summary>
